@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Copyright 2013 François Kooman <fkooman@tuxed.net>.
+ * Copyright 2017 François Kooman <fkooman@tuxed.net>.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ class Parser
     {
         $this->md = @simplexml_load_file($metadataFile);
         if (false === $this->md) {
-            throw new ParserException('unable to read metadata file');
+            throw new ParserException(sprintf('unable to read file "%s"', $metadataFile));
         }
         $this->md->registerXPathNamespace('md', 'urn:oasis:names:tc:SAML:2.0:metadata');
     }
@@ -39,7 +39,9 @@ class Parser
             'keys' => [],
         ];
 
-        $result = $this->md->xpath('//md:EntityDescriptor[@entityID="'.$entityId.'"]/md:IDPSSODescriptor/md:SingleSignOnService');
+        $result = $this->md->xpath(
+            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:SingleSignOnService', $entityId)
+        );
 
         if (0 === count($result)) {
             // no SingleSignOnService entry for this entityID in metadata
@@ -47,10 +49,16 @@ class Parser
         }
 
         foreach ($result as $ep) {
-            array_push($md['SingleSignOnService'], ['Binding' => (string) $ep['Binding'], 'Location' => (string) $ep['Location']]);
+            $md['SingleSignOnService'][] = [
+                'Binding' => (string) $ep['Binding'],
+                'Location' => (string) $ep['Location'],
+            ];
         }
 
-        $result = $this->md->xpath('//md:EntityDescriptor[@entityID="'.$entityId.'"]/md:IDPSSODescriptor/md:KeyDescriptor');
+        $result = $this->md->xpath(
+            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:KeyDescriptor', $entityId)
+        );
+
         if (0 === count($result)) {
             // no KeyDescriptor entry for this entityID in metadata
             throw new ParserException('entity not found in metadata, or no KeyDescriptor');
@@ -75,7 +83,7 @@ class Parser
 //            $certData = new CertParser((string) $cd->children("http://www.w3.org/2000/09/xmldsig#")->KeyInfo->X509Data->X509Certificate);
 //            $key['X509Certificate'] = $certData->toBase64();
 
-            array_push($md['keys'], $key);
+            $md['keys'][] = $key;
         }
 
         return $md;
@@ -87,14 +95,21 @@ class Parser
             'AssertionConsumerService' => [],
         ];
 
-        $result = $this->md->xpath('//md:EntityDescriptor[@entityID="'.$entityId.'"]/md:SPSSODescriptor/md:AssertionConsumerService');
+        $result = $this->md->xpath(
+            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:SPSSODescriptor/md:AssertionConsumerService', $entityId)
+        );
+
         if (0 === count($result)) {
             // no AssertionConsumerService entry for this entityID in metadata
             throw new ParserException('entity not found in metadata, or no AssertionConsumerService');
         }
 
         foreach ($result as $ep) {
-            array_push($md['AssertionConsumerService'], ['Binding' => (string) $ep['Binding'], 'Location' => (string) $ep['Location'], 'index' => (int) $ep['index']]);
+            $md['AssertionConsumerService'][] = [
+                'Binding' => (string) $ep['Binding'],
+                'Location' => (string) $ep['Location'],
+                'index' => (int) $ep['index'],
+            ];
         }
 
         return $md;
