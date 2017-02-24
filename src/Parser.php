@@ -18,6 +18,8 @@
 
 namespace fkooman\SAML\Metadata;
 
+use SimpleXMLElement;
+
 class Parser
 {
     /** @var \SimpleXMLElement */
@@ -32,36 +34,100 @@ class Parser
         $this->metadata = $metadata;
     }
 
+    public function getIdps()
+    {
+        $idpList = [];
+
+        $entityList = $this->metadata->xpath('//md:EntityDescriptor');
+        foreach ($entityList as $entity) {
+            $entityId = (string) $entity['entityID'];
+            $idpDescriptor = $entity->xpath('md:IDPSSODescriptor');
+            if (0 !== count($idpDescriptor)) {
+                // we have an IdP
+                $idpList[] = [
+                    'entityId' => $entityId,
+                    'SingleSignOnService' => $this->getSso($idpDescriptor[0]),
+                    'keys' => $this->getKeys($idpDescriptor[0]),
+                ];
+            }
+        }
+
+        return $idpList;
+    }
+
     public function getIdp($entityId)
     {
-        $metadata = [
-            'SingleSignOnService' => [],
-            'keys' => [],
-        ];
+        $idpDescriptor = $this->metadata->xpath(sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor', $entityId));
+        if (0 !== count($idpDescriptor)) {
+            // we have an IdP
+            return [
+                'SingleSignOnService' => $this->getSso($idpDescriptor[0]),
+                'keys' => $this->getKeys($idpDescriptor[0]),
+            ];
+        }
 
-        $result = $this->metadata->xpath(
-            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:SingleSignOnService', $entityId)
-        );
+        return false;
+    }
 
+    public function getSp($entityId)
+    {
+        $spDescriptor = $this->metadata->xpath(sprintf('//md:EntityDescriptor[@entityID="%s"]/md:SPSSODescriptor', $entityId));
+        if (0 !== count($spDescriptor)) {
+            // we have an SP
+            return [
+                'AssertionConsumerService' => $this->getAcs($spDescriptor[0]),
+            ];
+        }
+
+        return false;
+    }
+
+    private function getAcs(SimpleXMLElement $xml)
+    {
+        $acsList = [];
+
+        $result = $xml->xpath('md:AssertionConsumerService');
         if (0 === count($result)) {
-            // no SingleSignOnService entry for this entityID in metadata
-            throw new ParserException('entity not found in metadata, or no SingleSignOnService');
+            throw new ParserException('no AssertionConsumerService');
         }
 
         foreach ($result as $ep) {
-            $metadata['SingleSignOnService'][] = [
+            $acsList[] = [
+                'Binding' => (string) $ep['Binding'],
+                'Location' => (string) $ep['Location'],
+                'index' => (int) $ep['index'],
+            ];
+        }
+
+        return $acsList;
+    }
+
+    private function getSso(SimpleXMLElement $xml)
+    {
+        $ssoList = [];
+
+        $result = $xml->xpath('md:SingleSignOnService');
+        if (0 === count($result)) {
+            throw new ParserException('no SingleSignOnService');
+        }
+
+        foreach ($result as $ep) {
+            $ssoList[] = [
                 'Binding' => (string) $ep['Binding'],
                 'Location' => (string) $ep['Location'],
             ];
         }
 
-        $result = $this->metadata->xpath(
-            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:KeyDescriptor', $entityId)
-        );
+        return $ssoList;
+    }
 
+    private function getKeys(SimpleXMLElement $xml)
+    {
+        $keyList = [];
+
+        $result = $xml->xpath('md:KeyDescriptor');
         if (0 === count($result)) {
-            // no KeyDescriptor entry for this entityID in metadata
-            throw new ParserException('entity not found in metadata, or no KeyDescriptor');
+            throw new ParserException('no KeyDescriptor');
         }
 
         foreach ($result as $cd) {
@@ -82,42 +148,16 @@ class Parser
 
             $certData = (string) $cd->children('http://www.w3.org/2000/09/xmldsig#')->KeyInfo->X509Data->X509Certificate;
 
-            // create a oneline certificate
+            // create a one line certificate
             $key['X509Certificate'] = str_replace(
                 [' ', "\t", "\n", "\r", "\0", "\x0B"],
                 '',
                 $certData
             );
 
-            $metadata['keys'][] = $key;
+            $keyList[] = $key;
         }
 
-        return $metadata;
-    }
-
-    public function getSp($entityId)
-    {
-        $metadata = [
-            'AssertionConsumerService' => [],
-        ];
-
-        $result = $this->metadata->xpath(
-            sprintf('//md:EntityDescriptor[@entityID="%s"]/md:SPSSODescriptor/md:AssertionConsumerService', $entityId)
-        );
-
-        if (0 === count($result)) {
-            // no AssertionConsumerService entry for this entityID in metadata
-            throw new ParserException('entity not found in metadata, or no AssertionConsumerService');
-        }
-
-        foreach ($result as $ep) {
-            $metadata['AssertionConsumerService'][] = [
-                'Binding' => (string) $ep['Binding'],
-                'Location' => (string) $ep['Location'],
-                'index' => (int) $ep['index'],
-            ];
-        }
-
-        return $metadata;
+        return $keyList;
     }
 }
