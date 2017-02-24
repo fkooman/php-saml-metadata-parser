@@ -21,25 +21,25 @@ namespace fkooman\SAML\Metadata;
 class Parser
 {
     /** @var \SimpleXMLElement */
-    private $md;
+    private $metadata;
 
     public function __construct($metadataFile)
     {
-        $this->md = @simplexml_load_file($metadataFile);
-        if (false === $this->md) {
+        if (false === $metadata = @simplexml_load_file($metadataFile)) {
             throw new ParserException(sprintf('unable to read file "%s"', $metadataFile));
         }
-        $this->md->registerXPathNamespace('md', 'urn:oasis:names:tc:SAML:2.0:metadata');
+        $metadata->registerXPathNamespace('md', 'urn:oasis:names:tc:SAML:2.0:metadata');
+        $this->metadata = $metadata;
     }
 
     public function getIdp($entityId)
     {
-        $md = [
+        $metadata = [
             'SingleSignOnService' => [],
             'keys' => [],
         ];
 
-        $result = $this->md->xpath(
+        $result = $this->metadata->xpath(
             sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:SingleSignOnService', $entityId)
         );
 
@@ -49,13 +49,13 @@ class Parser
         }
 
         foreach ($result as $ep) {
-            $md['SingleSignOnService'][] = [
+            $metadata['SingleSignOnService'][] = [
                 'Binding' => (string) $ep['Binding'],
                 'Location' => (string) $ep['Location'],
             ];
         }
 
-        $result = $this->md->xpath(
+        $result = $this->metadata->xpath(
             sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor/md:KeyDescriptor', $entityId)
         );
 
@@ -89,19 +89,19 @@ class Parser
                 $certData
             );
 
-            $md['keys'][] = $key;
+            $metadata['keys'][] = $key;
         }
 
-        return $md;
+        return $metadata;
     }
 
     public function getSp($entityId)
     {
-        $md = [
+        $metadata = [
             'AssertionConsumerService' => [],
         ];
 
-        $result = $this->md->xpath(
+        $result = $this->metadata->xpath(
             sprintf('//md:EntityDescriptor[@entityID="%s"]/md:SPSSODescriptor/md:AssertionConsumerService', $entityId)
         );
 
@@ -111,13 +111,13 @@ class Parser
         }
 
         foreach ($result as $ep) {
-            $md['AssertionConsumerService'][] = [
+            $metadata['AssertionConsumerService'][] = [
                 'Binding' => (string) $ep['Binding'],
                 'Location' => (string) $ep['Location'],
                 'index' => (int) $ep['index'],
             ];
         }
 
-        return $md;
+        return $metadata;
     }
 }
