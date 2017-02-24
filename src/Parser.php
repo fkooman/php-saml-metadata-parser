@@ -80,8 +80,14 @@ class Parser
                 $key[$use] = true;
             }
 
-//            $certData = new CertParser((string) $cd->children("http://www.w3.org/2000/09/xmldsig#")->KeyInfo->X509Data->X509Certificate);
-//            $key['X509Certificate'] = $certData->toBase64();
+            $certData = (string) $cd->children('http://www.w3.org/2000/09/xmldsig#')->KeyInfo->X509Data->X509Certificate;
+
+            // create a oneline certificate
+            $key['X509Certificate'] = str_replace(
+                [' ', "\t", "\n", "\r", "\0", "\x0B"],
+                '',
+                $certData
+            );
 
             $md['keys'][] = $key;
         }
