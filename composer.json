@@ -1,13 +1,20 @@
 {
-    "autoload": {
-        "psr-0": {
-            "fkooman\\saml\\metadata\\": "src/"
+    "authors": [
+        {
+            "email": "fkooman@tuxed.net",
+            "name": "Fran\u00e7ois Kooman"
         }
-    }, 
-    "license": "Apache-2.0", 
-    "name": "frkosurf/php-saml-metadata-parser", 
+    ],
+    "autoload": {
+        "psr-4": {
+            "fkooman\\SAML\\Metadata\\": "src/"
+        }
+    },
+    "description": "SAML metadata library",
+    "license": "Apache-2.0",
+    "name": "fkooman/php-saml-metadata",
     "require": {
-        "fkooman/php-cert-parser": "0.1.*", 
-        "php": ">=5.3.3"
+        "ext-xml": "*",
+        "php": ">=5.4.0"
     }
 }
