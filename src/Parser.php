@@ -20,7 +20,7 @@ namespace fkooman\SAML\Metadata;
 
 class Parser
 {
-    /** @var array */
+    /** @var \SimpleXMLElement */
     private $md;
 
     public function __construct($metadataFile)
