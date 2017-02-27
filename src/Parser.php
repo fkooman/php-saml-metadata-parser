@@ -55,6 +55,26 @@ class Parser
         return $idpList;
     }
 
+    public function getSps()
+    {
+        $spList = [];
+
+        $entityList = $this->metadata->xpath('//md:EntityDescriptor');
+        foreach ($entityList as $entity) {
+            $entityId = (string) $entity['entityID'];
+            $spDescriptor = $entity->xpath('md:SPSSODescriptor');
+            if (0 !== count($spDescriptor)) {
+                // we have an IdP
+                $spList[] = [
+                    'entityId' => $entityId,
+                    'AssertionConsumerService' => $this->getAcs($spDescriptor[0]),
+                ];
+            }
+        }
+
+        return $spList;
+    }
+
     public function getIdp($entityId)
     {
         $idpDescriptor = $this->metadata->xpath(sprintf('//md:EntityDescriptor[@entityID="%s"]/md:IDPSSODescriptor', $entityId));
